@@ -1,4 +1,138 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { CreateUsuarioDto } from '../usuarios/dto/create-usuario.dto';
+import { UsuariosService } from '../usuarios/usuarios.service';
+import { LoginAuthDto } from './dto/login-auth.dto';
 
 @Injectable()
-export class AuthService {}
+export class AuthService {
+  constructor(
+    private readonly usuariosService: UsuariosService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  //registro un nuevo usuario y devuelvo su token
+  async registrar(createUsuarioDto: CreateUsuarioDto) {
+    //fuerzo perfil usuario por defecto si no viene definido
+    const datosParaCrear: CreateUsuarioDto & { imagenPerfil?: string } = {
+      ...createUsuarioDto,
+      perfil: createUsuarioDto.perfil ?? 'usuario',
+    };
+
+    //creo el usuario en la base de datos
+    const usuario = await this.usuariosService.create(datosParaCrear as CreateUsuarioDto);
+    //limpio datos sensibles antes de devolverlo
+    const usuarioPublico = this.usuariosService.toPublic(usuario);
+
+    //genero token jwt con datos minimos del usuario
+    const token = this.crearToken(usuarioPublico.uuid, usuarioPublico.perfil, {
+      email: usuarioPublico.email,
+      userName: usuarioPublico.userName,
+    });
+
+    //devuelvo mensaje, usuario y token
+    return {
+      mensaje: 'registro completado',
+      usuario: usuarioPublico,
+      token,
+    };
+  }
+
+  //valido credenciales y genero token al iniciar sesion
+  async login(loginAuthDto: LoginAuthDto) {
+    //obtengo username o email segun lo que haya enviado
+    const username = loginAuthDto.userName ?? loginAuthDto.userName;
+    if (!loginAuthDto.email && !username) {
+      throw new BadRequestException('debe enviar email o nombre de usuario');
+    }
+
+    //busco usuario por email o username
+    const usuario = await this.usuariosService.findByEmailOrUserName({
+      email: loginAuthDto.email,
+      userName: username,
+    });
+    if (!usuario) {
+      throw new UnauthorizedException('credenciales invalidas');
+    }
+
+    //verifico que la cuenta no este deshabilitada
+    if (usuario.estado === false) {
+      throw new UnauthorizedException('la cuenta esta deshabilitada');
+    }
+
+    //comparo la contraseña enviada con la guardada
+    const passwordValido = await this.usuariosService.compararPassword(
+      loginAuthDto.password,
+      usuario.password,
+    );
+    if (!passwordValido) {
+      throw new UnauthorizedException('credenciales invalidas');
+    }
+
+    //elimino datos sensibles y creo token
+    const usuarioPublico = this.usuariosService.toPublic(usuario);
+    const token = this.crearToken(usuarioPublico.uuid, usuarioPublico.perfil, {
+      email: usuarioPublico.email,
+      userName: usuarioPublico.userName,
+    });
+
+    //devuelvo mensaje, usuario y token
+    return {
+      mensaje: 'login correcto',
+      usuario: usuarioPublico,
+      token,
+    };
+  }
+
+  //valido el token recibido en el header authorization
+  validarToken(authorization?: string) {
+    //extraigo el token del header
+    const token = this.extraerTokenDesdeHeader(authorization);
+    try {
+      //verifico que el token sea valido y no haya expirado
+      const payload = this.jwtService.verify(token);
+      return payload;
+    } catch {
+      throw new UnauthorizedException('token invalido o expirado');
+    }
+  }
+
+  //creo el token jwt con el payload personalizado
+  private crearToken(
+    uuid: string,
+    perfil: string,
+    datosContacto: { email: string; userName: string },
+  ) {
+    //armo el objeto payload con los datos basicos del usuario
+    const payload = {
+      uuid,
+      perfil,
+      email: datosContacto.email,
+      userName: datosContacto.userName,
+    };
+    //firmo el token con el secreto definido en el modulo jwt
+    const token = this.jwtService.sign(payload);
+    return token;
+  }
+
+  //extraigo el token del header siguiendo el formato bearer
+  private extraerTokenDesdeHeader(authorization?: string) {
+    if (!authorization) {
+      throw new UnauthorizedException('token no enviado');
+    }
+    //separo esquema y token
+    const partes = authorization.split(' ');
+    const esquema = partes[0];
+    const token = partes[1];
+    //valido que el formato sea "Bearer token"
+    if (esquema !== 'Bearer' || !token) {
+      throw new UnauthorizedException('formato de autorizacion invalido');
+    }
+    //retorno el token limpio
+    return token;
+  }
+}
