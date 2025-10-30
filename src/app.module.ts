@@ -18,7 +18,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
         //obtengo la uri de mongo o uso la local si no existe
         const uri =
           configService.get<string>('MONGO_URI') ??
-          'mongodb://localhost:27017/rumbo-criollo';
+          'mongodb://localhost:27017/rumbo_criollo';
         //retorno el objeto con la uri para mongoose
         return { uri };
       },

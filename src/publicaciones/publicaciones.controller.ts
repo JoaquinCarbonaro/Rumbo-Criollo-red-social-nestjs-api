@@ -7,28 +7,28 @@ import { UpdatePublicacioneDto } from './dto/update-publicacione.dto';
 export class PublicacionesController {
   constructor(private readonly publicacionesService: PublicacionesService) {}
 
-  @Post()
-  create(@Body() createPublicacioneDto: CreatePublicacioneDto) {
-    return this.publicacionesService.create(createPublicacioneDto);
-  }
+  // @Post()
+  // create(@Body() createPublicacioneDto: CreatePublicacioneDto) {
+  //   return this.publicacionesService.create(createPublicacioneDto);
+  // }
 
-  @Get()
-  findAll() {
-    return this.publicacionesService.findAll();
-  }
+  // @Get()
+  // findAll() {
+  //   return this.publicacionesService.findAll();
+  // }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.publicacionesService.findOne(+id);
-  }
+  // @Get(':id')
+  // findOne(@Param('id') id: string) {
+  //   return this.publicacionesService.findOne(+id);
+  // }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePublicacioneDto: UpdatePublicacioneDto) {
-    return this.publicacionesService.update(+id, updatePublicacioneDto);
-  }
+  // @Patch(':id')
+  // update(@Param('id') id: string, @Body() updatePublicacioneDto: UpdatePublicacioneDto) {
+  //   return this.publicacionesService.update(+id, updatePublicacioneDto);
+  // }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.publicacionesService.remove(+id);
-  }
+  // @Delete(':id')
+  // remove(@Param('id') id: string) {
+  //   return this.publicacionesService.remove(+id);
+  // }
 }
