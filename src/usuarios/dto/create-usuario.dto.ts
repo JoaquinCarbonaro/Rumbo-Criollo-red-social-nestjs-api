@@ -1,4 +1,5 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsDateString } from 'class-validator';
+import { IsDateString, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsFechaNoFutura, IsMayorDeEdad } from '../../utils/date-validators';
 
 export class CreateUsuarioDto {
   //valido que el nombre sea texto
@@ -24,6 +25,8 @@ export class CreateUsuarioDto {
 
   //valido que la fecha tenga formato ISO (YYYY-MM-DD)
   @IsDateString()
+  @IsFechaNoFutura()
+  @IsMayorDeEdad()
   fechaNacimiento!: string;
 
   //valido que la descripcion sea texto

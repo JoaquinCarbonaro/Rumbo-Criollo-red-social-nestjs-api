@@ -4,10 +4,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { join } from 'path';
-
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UsuariosModule } from '../usuarios/usuarios.module';
+import { validarImagenMulter } from '../utils/file-upload';
 
 //defino la ruta donde guardo las imagenes subidas
 const uploadRoot = join(process.cwd(), 'public', 'images');
@@ -30,6 +30,7 @@ const uploadRoot = join(process.cwd(), 'public', 'images');
           cb(null, nombre);
         },
       }),
+      fileFilter: validarImagenMulter,
     }),
 
     //configuro el modulo jwt usando variables de entorno

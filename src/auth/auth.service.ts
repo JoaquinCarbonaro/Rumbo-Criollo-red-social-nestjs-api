@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUsuarioDto } from '../usuarios/dto/create-usuario.dto';
+import { obtenerFechaNacimientoValidada } from '../utils/date-validators';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { LoginAuthDto } from './dto/login-auth.dto';
 
@@ -17,6 +18,8 @@ export class AuthService {
 
   //registro un nuevo usuario y devuelvo su token
   async registrar(createUsuarioDto: CreateUsuarioDto) {
+    //valido que la fecha de nacimiento sea coherente antes de crear
+    obtenerFechaNacimientoValidada(createUsuarioDto.fechaNacimiento);
     //fuerzo perfil usuario por defecto si no viene definido
     const datosParaCrear: CreateUsuarioDto & { imagenPerfil?: string } = {
       ...createUsuarioDto,
@@ -135,4 +138,5 @@ export class AuthService {
     //retorno el token limpio
     return token;
   }
+
 }

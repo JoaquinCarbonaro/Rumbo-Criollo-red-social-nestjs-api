@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { Model } from 'mongoose';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
+import { obtenerFechaNacimientoValidada } from '../utils/date-validators';
 import { Usuario, UsuarioDocument } from './schemas/usuario.schema';
 
 @Injectable()
@@ -36,8 +37,10 @@ export class UsuariosService {
       //hasheo la contraseña antes de guardar
       const passwordHasheado = await bcrypt.hash(createUsuarioDto.password, 10);
 
-      //convierto la fecha de nacimiento a tipo Date
-      const fechaNacimiento = new Date(createUsuarioDto.fechaNacimiento);
+      //convierto y valido la fecha de nacimiento
+      const fechaNacimiento = obtenerFechaNacimientoValidada(
+        createUsuarioDto.fechaNacimiento,
+      );
 
       //creo el documento de usuario con todos los campos necesarios
       const nuevoUsuario = new this.usuarioModel({
@@ -103,4 +106,5 @@ export class UsuariosService {
     const coincide = await bcrypt.compare(passwordPlano, passwordHash);
     return coincide;
   }
+
 }
