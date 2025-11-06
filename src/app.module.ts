@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsuariosModule } from './usuarios/usuarios.module';
+import { PublicacionesModule } from './publicaciones/publicaciones.module';
 
 @Module({
   imports: [
@@ -27,10 +28,9 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     //importo modulos principales del proyecto
     UsuariosModule,
     AuthModule,
+    PublicacionesModule,
   ],
-  //registro controlador principal
   controllers: [AppController],
-  //registro servicio principal
   providers: [AppService],
 })
 export class AppModule {}
