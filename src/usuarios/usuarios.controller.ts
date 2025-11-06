@@ -1,34 +1,73 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { UsuariosService } from './usuarios.service';
-import { CreateUsuarioDto } from './dto/create-usuario.dto';
-import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import {
+  Controller,
+  Get,
+  Req,
+  UseGuards,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common'
+import type { Request } from 'express'
+import { UsuariosService } from './usuarios.service'
+import { PublicacionesService } from '../publicaciones/publicaciones.service'
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 
 @Controller('usuarios')
 export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) {}
+  //inyecto los servicios necesarios para manejar usuarios y publicaciones
+  constructor(
+    private readonly usuariosService: UsuariosService,
 
-  // @Post()
-  // create(@Body() createUsuarioDto: CreateUsuarioDto) {
-  //   return this.usuariosService.create(createUsuarioDto);
-  // }
+    //uso forwardref para evitar ciclo de dependencias con publicacionesservice
+    @Inject(forwardRef(() => PublicacionesService))
+    private readonly publicacionesService: PublicacionesService,
+  ) {}
 
-  // @Get()
-  // findAll() {
-  //   return this.usuariosService.findAll();
-  // }
+  //ruta protegida que devuelve el perfil del usuario autenticado junto a sus publicaciones
+  @UseGuards(JwtAuthGuard)
+  @Get('mi-perfil')
+  async obtenerMiPerfil(@Req() req: Request) {
+    //extraigo los datos del usuario desde el token jwt
+    const usuarioJwt = (req as any).user
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.usuariosService.findOne(+id);
-  // }
+    //si el token no tiene uuid lanzo error
+    if (!usuarioJwt || !usuarioJwt.uuid) {
+      throw new NotFoundException('usuario no encontrado')
+    }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateUsuarioDto: UpdateUsuarioDto) {
-  //   return this.usuariosService.update(+id, updateUsuarioDto);
-  // }
+    //busco el usuario real en base de datos usando su uuid
+    const usuario = await this.usuariosService.findByUuid(usuarioJwt.uuid)
+    if (!usuario) {
+      throw new NotFoundException('usuario no encontrado')
+    }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.usuariosService.remove(+id);
-  // }
+    //armo el objeto publico que se enviara al front
+    //incluyo solo los campos necesarios para la vista de perfil
+    const usuarioPublico = {
+      uuid: usuario.uuid,
+      nombre: usuario.nombre,
+      apellido: usuario.apellido,
+      userName: usuario.userName,
+      email: usuario.email,
+      fechaNacimiento: usuario.fechaNacimiento,
+      descripcion: usuario.descripcion,
+      imagenPerfil: usuario.imagenPerfil ?? null,
+    }
+
+    //busco todas las publicaciones creadas por este usuario
+    const publicaciones = await this.publicacionesService.findByAutor(usuario._id)
+
+    //ordeno las publicaciones por fecha descendente (de mas reciente a mas antigua)
+    const ordenadas = [...publicaciones].sort((a, b) => {
+      const fechaA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const fechaB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return fechaB - fechaA
+    })
+
+    //me quedo con las 3 publicaciones mas recientes
+    const ultimas = ordenadas.slice(0, 3)
+
+    //devuelvo el perfil del usuario junto con sus ultimas publicaciones
+    return { usuario: usuarioPublico, publicaciones: ultimas }
+  }
 }

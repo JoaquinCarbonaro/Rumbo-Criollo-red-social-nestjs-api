@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -15,7 +19,9 @@ export class UsuariosService {
   ) {}
 
   //creo un nuevo usuario con validaciones basicas
-  async create(createUsuarioDto: CreateUsuarioDto & { imagenPerfil?: string }): Promise<UsuarioDocument> {
+  async create(
+    createUsuarioDto: CreateUsuarioDto & { imagenPerfil?: string },
+  ): Promise<UsuarioDocument> {
     try {
       //normalizo email y username a minusculas
       const email = createUsuarioDto.email.toLowerCase();
@@ -29,9 +35,13 @@ export class UsuariosService {
       }
 
       //verifico que no exista otro usuario con el mismo nombre de usuario
-      const userNameExistente = await this.usuarioModel.findOne({ userName }).exec();
+      const userNameExistente = await this.usuarioModel
+        .findOne({ userName })
+        .exec();
       if (userNameExistente) {
-        throw new BadRequestException('el nombre de usuario ya esta registrado');
+        throw new BadRequestException(
+          'el nombre de usuario ya esta registrado',
+        );
       }
 
       //hasheo la contraseña antes de guardar
@@ -87,7 +97,9 @@ export class UsuariosService {
 
     //valido que se haya enviado al menos uno
     if (filtros.length === 0) {
-      throw new BadRequestException('debe enviar un email o un nombre de usuario');
+      throw new BadRequestException(
+        'debe enviar un email o un nombre de usuario',
+      );
     }
 
     //busco el primer usuario que coincida con email o username
@@ -95,16 +107,27 @@ export class UsuariosService {
     return usuario;
   }
 
+  //busco usuario por uuid para reutilizarlo en otros modulos
+  async findByUuid(uuid: string): Promise<UsuarioDocument | null> {
+    const usuario = await this.usuarioModel.findOne({ uuid }).exec();
+    return usuario;
+  }
+
   //transformo el documento de mongoose en objeto publico sin campos sensibles
   toPublic(usuario: UsuarioDocument) {
-    const { password, __v, ...resto } = usuario.toObject() as Record<string, any>;
+    const { password, __v, ...resto } = usuario.toObject() as Record<
+      string,
+      any
+    >;
     return resto;
   }
 
   //comparo la contraseña enviada con el hash guardado
-  async compararPassword(passwordPlano: string, passwordHash: string): Promise<boolean> {
+  async compararPassword(
+    passwordPlano: string,
+    passwordHash: string,
+  ): Promise<boolean> {
     const coincide = await bcrypt.compare(passwordPlano, passwordHash);
     return coincide;
   }
-
 }

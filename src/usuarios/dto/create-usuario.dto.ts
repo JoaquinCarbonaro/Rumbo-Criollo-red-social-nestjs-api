@@ -1,4 +1,11 @@
-import { IsDateString, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsEmail,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from 'class-validator';
 import { IsFechaNoFutura, IsMayorDeEdad } from '../../utils/date-validators';
 
 export class CreateUsuarioDto {
@@ -18,9 +25,12 @@ export class CreateUsuarioDto {
   @IsString()
   userName!: string;
 
-  //valido que la contraseña tenga al menos 8 caracteres
+  //valido que la contraseña tenga al menos 8 caracteres y cumpla la regla de seguridad
   @IsString()
   @MinLength(8)
+  @Matches(/^(?=.*[A-Z])(?=.*\d).+$/, {
+    message: 'la contrasena debe tener al menos una mayuscula y un numero',
+  })
   password!: string;
 
   //valido que la fecha tenga formato ISO (YYYY-MM-DD)
