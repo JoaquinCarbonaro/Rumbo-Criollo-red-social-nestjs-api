@@ -49,7 +49,10 @@ export class UsuariosController {
       apellido: usuario.apellido,
       userName: usuario.userName,
       email: usuario.email,
-      fechaNacimiento: usuario.fechaNacimiento,
+      // convierto la fecha a formato plano YYYY-MM-DD para evitar desfase horario
+      fechaNacimiento: usuario.fechaNacimiento
+        ? usuario.fechaNacimiento.toISOString().split('T')[0]
+        : null,
       descripcion: usuario.descripcion,
       imagenPerfil: usuario.imagenPerfil ?? null,
     }
