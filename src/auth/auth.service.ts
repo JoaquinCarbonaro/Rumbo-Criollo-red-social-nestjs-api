@@ -9,10 +9,21 @@ import { obtenerFechaNacimientoValidada } from '../utils/date-validators';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { LoginAuthDto } from './dto/login-auth.dto';
 
+//estructura base del payload que se guarda dentro del token jwt
+export interface AuthPayload {
+  uuid: string;
+  perfil: string;
+  email: string;
+  userName: string;
+  [key: string]: unknown;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
+    //servicio de usuarios para crear, buscar y comparar contrasenas
     private readonly usuariosService: UsuariosService,
+    //servicio de jwt para firmar y verificar tokens
     private readonly jwtService: JwtService,
   ) {}
 
@@ -20,6 +31,7 @@ export class AuthService {
   async registrar(createUsuarioDto: CreateUsuarioDto) {
     //valido que la fecha de nacimiento sea coherente antes de crear
     obtenerFechaNacimientoValidada(createUsuarioDto.fechaNacimiento);
+
     //fuerzo perfil usuario por defecto si no viene definido
     const datosParaCrear: CreateUsuarioDto & { imagenPerfil?: string } = {
       ...createUsuarioDto,
@@ -27,7 +39,10 @@ export class AuthService {
     };
 
     //creo el usuario en la base de datos
-    const usuario = await this.usuariosService.create(datosParaCrear as CreateUsuarioDto);
+    const usuario = await this.usuariosService.create(
+      datosParaCrear as CreateUsuarioDto,
+    );
+
     //limpio datos sensibles antes de devolverlo
     const usuarioPublico = this.usuariosService.toPublic(usuario);
 
@@ -49,6 +64,7 @@ export class AuthService {
   async login(loginAuthDto: LoginAuthDto) {
     //obtengo username o email segun lo que haya enviado
     const username = loginAuthDto.userName ?? loginAuthDto.userName;
+    //valido que haya enviado al menos email o username
     if (!loginAuthDto.email && !username) {
       throw new BadRequestException('debe enviar email o nombre de usuario');
     }
@@ -58,6 +74,7 @@ export class AuthService {
       email: loginAuthDto.email,
       userName: username,
     });
+    //si no encuentro usuario lanzo error de credenciales
     if (!usuario) {
       throw new UnauthorizedException('credenciales invalidas');
     }
@@ -67,16 +84,17 @@ export class AuthService {
       throw new UnauthorizedException('la cuenta esta deshabilitada');
     }
 
-    //comparo la contraseña enviada con la guardada
+    //comparo la contrasena enviada con la guardada en base de datos
     const passwordValido = await this.usuariosService.compararPassword(
       loginAuthDto.password,
       usuario.password,
     );
+    //si la contrasena no coincide lanzo error de credenciales
     if (!passwordValido) {
       throw new UnauthorizedException('credenciales invalidas');
     }
 
-    //elimino datos sensibles y creo token
+    //elimino datos sensibles y creo token para el usuario
     const usuarioPublico = this.usuariosService.toPublic(usuario);
     const token = this.crearToken(usuarioPublico.uuid, usuarioPublico.perfil, {
       email: usuarioPublico.email,
@@ -92,14 +110,16 @@ export class AuthService {
   }
 
   //valido el token recibido en el header authorization
-  validarToken(authorization?: string) {
-    //extraigo el token del header
+  validarToken(authorization?: string): AuthPayload {
+    //extraigo el token crudo del header
     const token = this.extraerTokenDesdeHeader(authorization);
     try {
       //verifico que el token sea valido y no haya expirado
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify<AuthPayload>(token);
+      //retorno el payload tipado para usar en el resto de la app
       return payload;
     } catch {
+      //si falla la verificacion considero el token invalido o vencido
       throw new UnauthorizedException('token invalido o expirado');
     }
   }
@@ -117,26 +137,29 @@ export class AuthService {
       email: datosContacto.email,
       userName: datosContacto.userName,
     };
-    //firmo el token con el secreto definido en el modulo jwt
+    //firmo el token con el secreto y configuracion definida en el modulo jwt
     const token = this.jwtService.sign(payload);
+    //retorno el token firmado listo para enviar al cliente
     return token;
   }
 
   //extraigo el token del header siguiendo el formato bearer
   private extraerTokenDesdeHeader(authorization?: string) {
+    //si no se envio el header lanzo error de autorizacion
     if (!authorization) {
       throw new UnauthorizedException('token no enviado');
     }
-    //separo esquema y token
+    //separo esquema y token usando el espacio como delimitador
     const partes = authorization.split(' ');
     const esquema = partes[0];
     const token = partes[1];
+
     //valido que el formato sea "Bearer token"
     if (esquema !== 'Bearer' || !token) {
       throw new UnauthorizedException('formato de autorizacion invalido');
     }
-    //retorno el token limpio
+
+    //retorno el token limpio para que pueda ser verificado
     return token;
   }
-
 }

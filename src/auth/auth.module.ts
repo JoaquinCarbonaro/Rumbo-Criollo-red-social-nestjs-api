@@ -1,57 +1,65 @@
-import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
-import { MulterModule } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { join } from 'path';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { UsuariosModule } from '../usuarios/usuarios.module';
-import { validarImagenMulter } from '../utils/file-upload';
+import { forwardRef, Module } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { JwtModule } from '@nestjs/jwt'
+import { MulterModule } from '@nestjs/platform-express'
+import { diskStorage } from 'multer'
+import { join } from 'path'
+import { AuthController } from './auth.controller'
+import { AuthService } from './auth.service'
+import { UsuariosModule } from '../usuarios/usuarios.module'
+import { validarImagenMulter } from '../utils/file-upload'
+import { JwtAuthGuard } from './guards/jwt-auth.guard'
 
-//defino la ruta donde guardo las imagenes subidas
-const uploadRoot = join(process.cwd(), 'public', 'images');
+//defino la ruta donde se guardan las imagenes subidas por los usuarios
+const uploadRoot = join(process.cwd(), 'public', 'images')
 
 @Module({
   imports: [
-    //importo el modulo de usuarios para acceder al modelo y servicio
-    UsuariosModule,
+    //uso forwardref para evitar el ciclo de dependencias con usuariosmodule
+    forwardRef(() => UsuariosModule),
 
-    //configuro multer para subir imagenes a public/images
+    //configuro multer para manejar la subida de imagenes al servidor
     MulterModule.register({
       storage: diskStorage({
-        //guardo los archivos en la carpeta public/images
+        //defino la carpeta destino donde se guardan las imagenes
         destination(req, file, cb) {
-          cb(null, uploadRoot);
+          cb(null, uploadRoot)
         },
-        //asigno nombre unico con timestamp y nombre original
+        //defino el nombre del archivo combinando timestamp y nombre original
         filename(req, file, cb) {
-          const nombre = `${Date.now()}-${file.originalname}`;
-          cb(null, nombre);
+          const nombre = `${Date.now()}-${file.originalname}`
+          cb(null, nombre)
         },
       }),
+      //valido que el archivo subido sea una imagen valida
       fileFilter: validarImagenMulter,
     }),
 
-    //configuro el modulo jwt usando variables de entorno
+    //configuro el modulo jwt leyendo los valores del archivo .env
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        //obtengo el secreto desde el .env o uso uno por defecto
-        const secreto = configService.get<string>('JWT_SECRET') ?? 'cambia-este-secreto';
-        //defino el tiempo de expiracion del token en 15 minutos
+        //obtengo el secreto del token o uso uno por defecto si no existe
+        const secreto =
+          configService.get<string>('JWT_SECRET') ?? 'cambia-este-secreto'
         return {
+          //asigno el secreto al token
           secret: secreto,
+          //defino el tiempo de expiracion del token a 15 minutos
           signOptions: { expiresIn: '15m' },
-        };
+        }
       },
     }),
   ],
-  //registro el controlador para manejar rutas de auth
+
+  //registro el controlador de autenticacion que maneja las rutas http
   controllers: [AuthController],
-  //registro el servicio que contiene la logica de autenticacion
-  providers: [AuthService],
-  //exporto el servicio para que otros modulos puedan usarlo
-  exports: [AuthService],
+
+  //registro los servicios y guards relacionados a autenticacion
+  providers: [AuthService, JwtAuthGuard],
+
+  //exporto el servicio y el guard para que otros modulos puedan usarlos
+  exports: [AuthService, JwtAuthGuard],
 })
+//defino el modulo de autenticacion que gestiona login, registro y validacion jwt
 export class AuthModule {}

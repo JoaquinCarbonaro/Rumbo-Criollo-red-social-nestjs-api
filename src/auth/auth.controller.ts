@@ -11,10 +11,7 @@ import {
   Headers as ReqHeaders,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-
-//importo solo tipos para cumplir con isolatedModules + emitDecoratorMetadata
 import type { Request, Express } from 'express';
-
 import { CreateUsuarioDto } from '../usuarios/dto/create-usuario.dto';
 import { AuthService } from './auth.service';
 import { LoginAuthDto } from './dto/login-auth.dto';
