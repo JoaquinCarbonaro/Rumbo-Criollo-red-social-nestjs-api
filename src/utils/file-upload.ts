@@ -10,7 +10,8 @@ const TIPOS_IMAGEN_PERMITIDOS = [
 ];
 
 //mensaje que se muestra si el tipo de archivo no es valido
-const MENSAJE_TIPO_INVALIDO = 'solo se permiten imagenes png, jpg, jpeg, webp o gif';
+const MENSAJE_TIPO_INVALIDO =
+  'solo se permiten imagenes png, jpg, jpeg, webp o gif';
 
 //funcion que verifica si el tipo mime recibido pertenece a los permitidos
 export function esTipoImagenValido(mimeType: string) {

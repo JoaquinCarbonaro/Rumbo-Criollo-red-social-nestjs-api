@@ -9,7 +9,11 @@ export const MENSAJE_MAYOR_EDAD = 'el usuario debe ser mayor de edad';
 
 //funcion para quitar la hora de una fecha y quedarme solo con dia, mes y anio
 function normalizarFecha(fecha: Date) {
-  const normalizada = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  const normalizada = new Date(
+    fecha.getFullYear(),
+    fecha.getMonth(),
+    fecha.getDate(),
+  );
   return normalizada;
 }
 
@@ -25,7 +29,8 @@ export function esFechaTextoValida(fechaTexto: string) {
 
 //calculo la edad de una persona segun la fecha de nacimiento y una fecha de referencia
 export function calcularEdad(fechaNacimiento: Date, fechaReferencia: Date) {
-  const diferenciaAnio = fechaReferencia.getFullYear() - fechaNacimiento.getFullYear();
+  const diferenciaAnio =
+    fechaReferencia.getFullYear() - fechaNacimiento.getFullYear();
   const mesReferencia = fechaReferencia.getMonth();
   const diaReferencia = fechaReferencia.getDate();
   const mesNacimiento = fechaNacimiento.getMonth();
