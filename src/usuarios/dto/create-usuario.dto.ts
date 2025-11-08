@@ -8,6 +8,7 @@ import {
 } from 'class-validator';
 import { IsFechaNoFutura, IsMayorDeEdad } from '../../utils/date-validators';
 
+//dto usado para validar los datos recibidos al crear un nuevo usuario
 export class CreateUsuarioDto {
   //valido que el nombre sea texto
   @IsString()
