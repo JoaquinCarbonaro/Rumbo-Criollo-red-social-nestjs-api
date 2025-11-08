@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
@@ -10,6 +11,8 @@ import { Model } from 'mongoose';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { obtenerFechaNacimientoValidada } from '../utils/date-validators';
 import { Usuario, UsuarioDocument } from './schemas/usuario.schema';
+import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto';
+import type { Express } from 'express';
 
 @Injectable()
 export class UsuariosService {
@@ -113,12 +116,116 @@ export class UsuariosService {
     return usuario;
   }
 
+  //actualizo el perfil del usuario autenticado
+  async actualizarPerfil(
+    uuid: string,
+    datos: ActualizarUsuarioDto,
+    imagenPerfil?: Express.Multer.File,
+  ): Promise<UsuarioDocument> {
+    try {
+      //busco el usuario por uuid
+      const usuario = await this.findByUuid(uuid);
+      if (!usuario) {
+        throw new NotFoundException('usuario no encontrado');
+      }
+
+      //si viene email y cambia, valido que no exista en otro usuario
+      if (typeof datos.email === 'string') {
+        //normalizo y comparo el email con el actual
+        const email = datos.email.toLowerCase().trim();
+        if (email !== '' && email !== usuario.email) {
+          const emailExistente = await this.usuarioModel
+            .findOne({ email, _id: { $ne: usuario._id } })
+            .exec();
+          if (emailExistente) {
+            throw new BadRequestException('el correo ya esta registrado');
+          }
+          usuario.email = email;
+        }
+      }
+
+      //si viene userName y cambia, valido que no exista en otro usuario
+      if (typeof datos.userName === 'string') {
+        //normalizo y comparo el username con el actual
+        const userName = datos.userName.toLowerCase().trim();
+        if (userName !== '' && userName !== usuario.userName) {
+          const userNameExistente = await this.usuarioModel
+            .findOne({ userName, _id: { $ne: usuario._id } })
+            .exec();
+          if (userNameExistente) {
+            throw new BadRequestException(
+              'el nombre de usuario ya esta registrado',
+            );
+          }
+          usuario.userName = userName;
+        }
+      }
+
+      //nombre
+      if (typeof datos.nombre === 'string') {
+        //elimino espacios y actualizo solo si no queda vacio
+        const nombre = datos.nombre.trim();
+        if (nombre !== '') {
+          usuario.nombre = nombre;
+        }
+      }
+
+      //apellido
+      if (typeof datos.apellido === 'string') {
+        //elimino espacios y actualizo solo si no queda vacio
+        const apellido = datos.apellido.trim();
+        if (apellido !== '') {
+          usuario.apellido = apellido;
+        }
+      }
+
+      //descripcion
+      if (typeof datos.descripcion === 'string') {
+        //guardo la descripcion recortada para evitar espacios extras
+        const descripcion = datos.descripcion.trim();
+        usuario.descripcion = descripcion;
+      }
+
+      //fecha de nacimiento (string YYYY-MM-DD)
+      if (typeof datos.fechaNacimiento === 'string') {
+        //valido y convierto la fecha solo si viene con algun valor
+        const valor = datos.fechaNacimiento.trim();
+        if (valor !== '') {
+          //reutilizo la misma validacion que en el alta de usuario
+          const fechaNacimiento = obtenerFechaNacimientoValidada(valor);
+          usuario.fechaNacimiento = fechaNacimiento;
+        }
+      }
+
+      //imagen de perfil nueva (archivo subido)
+      if (imagenPerfil) {
+        //mismo criterio que en create: guardo ruta relativa
+        usuario.imagenPerfil = `/images/${imagenPerfil.filename}`;
+      }
+
+      //guardo los cambios en base de datos y retorno el documento actualizado
+      const guardado = await usuario.save();
+      return guardado;
+    } catch (error) {
+      //si el error es de validacion o de no encontrado lo relanzo
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      //ante cualquier otro error devuelvo un 500 generico
+      throw new InternalServerErrorException('no se pudo actualizar el usuario');
+    }
+  }
+
   //transformo el documento de mongoose en objeto publico sin campos sensibles
   toPublic(usuario: UsuarioDocument) {
     const { password, __v, ...resto } = usuario.toObject() as Record<
       string,
       any
     >;
+    //devuelvo solo los campos seguros para exponer al front
     return resto;
   }
 
@@ -127,6 +234,7 @@ export class UsuariosService {
     passwordPlano: string,
     passwordHash: string,
   ): Promise<boolean> {
+    //uso bcrypt para comparar la contraseña plana con el hash
     const coincide = await bcrypt.compare(passwordPlano, passwordHash);
     return coincide;
   }
