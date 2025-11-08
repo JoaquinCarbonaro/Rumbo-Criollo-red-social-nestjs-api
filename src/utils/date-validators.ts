@@ -17,14 +17,51 @@ function normalizarFecha(fecha: Date) {
   return normalizada;
 }
 
+//parsea un texto en formato YYYY-MM-DD a una fecha local segura
+function parsearFechaLocal(fechaTexto: string): Date | null {
+  if (!fechaTexto) {
+    return null;
+  }
+
+  const trimmed = fechaTexto.trim();
+
+  //espero formato YYYY-MM-DD
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+
+  //importante: uso fecha local, no iso string
+  const fecha = new Date(year, month - 1, day);
+
+  if (Number.isNaN(fecha.getTime())) {
+    return null;
+  }
+
+  //verificacion extra para evitar fechas invalidas tipo 31/02
+  if (
+    fecha.getFullYear() !== year ||
+    fecha.getMonth() !== month - 1 ||
+    fecha.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return fecha;
+}
+
 //verifico si un texto se puede convertir en una fecha valida
 export function esFechaTextoValida(fechaTexto: string) {
-  if (!fechaTexto) {
-    return false;
-  }
-  const fecha = new Date(fechaTexto);
-  const esValida = Number.isNaN(fecha.getTime()) === false;
-  return esValida;
+  const fecha = parsearFechaLocal(fechaTexto);
+  return fecha !== null;
 }
 
 //calculo la edad de una persona segun la fecha de nacimiento y una fecha de referencia
@@ -59,36 +96,46 @@ export function tieneEdadMinima(fechaNacimiento: Date, referencia: Date) {
 
 //valido un texto recibido como fecha y lanzo excepciones si hay errores
 export function obtenerFechaNacimientoValidada(fechaTexto: string) {
+  //intento convertir el texto a una fecha local
+  const fecha = parsearFechaLocal(fechaTexto);
+
   //si no es un texto de fecha valido lanzo error
-  if (!esFechaTextoValida(fechaTexto)) {
+  if (!fecha) {
     throw new BadRequestException(MENSAJE_FECHA_INVALIDA);
   }
-  const fecha = new Date(fechaTexto);
+
+  //normalizo la fecha recibida y la fecha de hoy a solo dia, mes y anio
   const fechaNormalizada = normalizarFecha(fecha);
+  const hoy = normalizarFecha(new Date());
+
+  //si la fecha es futura lanzo error
+  if (esFechaFutura(fechaNormalizada, hoy)) {
+    throw new BadRequestException(MENSAJE_FECHA_FUTURA);
+  }
+
+  //si no cumple la edad minima lanzo error
+  if (!tieneEdadMinima(fechaNormalizada, hoy)) {
+    throw new BadRequestException(MENSAJE_MAYOR_EDAD);
+  }
+
+  //si todo esta bien retorno la fecha normalizada
+  return fechaNormalizada;
+}
+
+//valido directamente una fecha date, no texto, y lanzo errores segun el caso
+export function validarFechaNacimiento(fecha: Date) {
+  const fechaNormalizada = normalizarFecha(fecha);
+  const esValida = Number.isNaN(fechaNormalizada.getTime()) === false;
+  //si la fecha no se puede interpretar lanzo error
+  if (!esValida) {
+    throw new BadRequestException(MENSAJE_FECHA_INVALIDA);
+  }
   const hoy = normalizarFecha(new Date());
   //si la fecha es futura lanzo error
   if (esFechaFutura(fechaNormalizada, hoy)) {
     throw new BadRequestException(MENSAJE_FECHA_FUTURA);
   }
   //si no cumple la edad minima lanzo error
-  if (!tieneEdadMinima(fechaNormalizada, hoy)) {
-    throw new BadRequestException(MENSAJE_MAYOR_EDAD);
-  }
-  //si todo esta bien retorno la fecha normalizada
-  return fechaNormalizada;
-}
-
-//valido directamente una fecha Date, no texto, y lanzo errores segun el caso
-export function validarFechaNacimiento(fecha: Date) {
-  const fechaNormalizada = normalizarFecha(fecha);
-  const esValida = Number.isNaN(fechaNormalizada.getTime()) === false;
-  if (!esValida) {
-    throw new BadRequestException(MENSAJE_FECHA_INVALIDA);
-  }
-  const hoy = normalizarFecha(new Date());
-  if (esFechaFutura(fechaNormalizada, hoy)) {
-    throw new BadRequestException(MENSAJE_FECHA_FUTURA);
-  }
   if (!tieneEdadMinima(fechaNormalizada, hoy)) {
     throw new BadRequestException(MENSAJE_MAYOR_EDAD);
   }
@@ -105,11 +152,11 @@ export function IsFechaNoFutura(validationOptions?: ValidationOptions) {
       options: validationOptions,
       validator: {
         validate(value: string) {
-          //si el valor no es una fecha valida devuelvo false
-          if (!esFechaTextoValida(value)) {
+          //intento parsear el valor recibido como fecha local
+          const fecha = parsearFechaLocal(value);
+          if (!fecha) {
             return false;
           }
-          const fecha = new Date(value);
           const hoy = normalizarFecha(new Date());
           const esFutura = esFechaFutura(fecha, hoy);
           //retorno true solo si la fecha no es futura
@@ -135,13 +182,14 @@ export function IsMayorDeEdad(validationOptions?: ValidationOptions) {
       options: validationOptions,
       validator: {
         validate(value: string) {
-          //si el texto no es fecha valida devuelvo false
-          if (!esFechaTextoValida(value)) {
+          //intento convertir el valor a fecha local
+          const fecha = parsearFechaLocal(value);
+          if (!fecha) {
             return false;
           }
-          const fecha = new Date(value);
           const hoy = normalizarFecha(new Date());
           const esMayor = tieneEdadMinima(fecha, hoy);
+          //retorno true solo si cumple la edad minima
           return esMayor;
         },
         //mensaje de error por defecto
