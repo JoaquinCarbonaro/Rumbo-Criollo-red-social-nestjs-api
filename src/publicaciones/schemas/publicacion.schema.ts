@@ -1,9 +1,36 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { Usuario } from '../../usuarios/schemas/usuario.schema';
 
 //defino el tipo de documento para las publicaciones
 export type PublicacionDocument = HydratedDocument<Publicacion>;
+
+//estructura de cada comentario guardado en la publicacion
+@Schema({ _id: true })
+export class ComentarioPublicacion {
+  //referencia al usuario que escribio el comentario
+  @Prop({ type: Types.ObjectId, ref: Usuario.name, required: true })
+  usuario!: Types.ObjectId;
+
+  //mensaje del comentario
+  @Prop({ type: String, required: true })
+  contenido!: string;
+
+  //flag para indicar si el comentario fue modificado luego de crearse
+  @Prop({ type: Boolean, default: false })
+  modificado!: boolean;
+
+  //fecha de creacion del comentario
+  @Prop({ type: Date, default: Date.now })
+  createdAt!: Date;
+
+  //fecha de ultima modificacion del comentario
+  @Prop({ type: Date, default: Date.now })
+  updatedAt!: Date;
+}
+
+//esquema de mongoose para los comentarios embebidos
+const ComentarioSchema = SchemaFactory.createForClass(ComentarioPublicacion);
 
 //coleccion de publicaciones con timestamps habilitados
 @Schema({ collection: 'publicaciones', timestamps: true })
@@ -37,9 +64,12 @@ export class Publicacion {
   @Prop({ type: Boolean, default: true })
   estado!: boolean;
 
-  //se implementara en el sprint 3
-  @Prop({ default: [] })
-  comentarios?: any[];
+  //listado de comentarios realizados en la publicacion
+  @Prop({
+    type: [ComentarioSchema],
+    default: [],
+  })
+  comentarios!: Types.DocumentArray<ComentarioPublicacion>;
 }
 
 //creo el esquema de mongoose a partir de la clase

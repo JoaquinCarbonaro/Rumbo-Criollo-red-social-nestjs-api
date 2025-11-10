@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
   Req,
   UploadedFile,
@@ -18,8 +19,11 @@ import { AuthPayload } from '../auth/auth.service'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { validarImagenMulter } from '../utils/file-upload'
 import { CreatePublicacionDto } from './dto/create-publicacion.dto'
+import { CreateComentarioDto } from './dto/create-comentario.dto'
+import { UpdateComentarioDto } from './dto/update-comentario.dto'
 import { PublicacionesService } from './publicaciones.service'
 
+//controlador principal para manejar las rutas de publicaciones
 @Controller('publicaciones')
 export class PublicacionesController {
   //inyecto el servicio de publicaciones
@@ -84,6 +88,7 @@ export class PublicacionesController {
     //determino el criterio de ordenamiento
     const orden = order === 'likes' ? 'likes' : 'createdAt'
 
+    //resuelvo la referencia al autor usando uuid, id o nombre
     const autorReferencia =
       autorUuid && autorUuid !== ''
         ? autorUuid
@@ -127,6 +132,7 @@ export class PublicacionesController {
   @Post(':id/me-gusta')
   darLike(@Param('id') id: string, @Req() req: Request) {
     const request = req as Request & { user?: AuthPayload }
+    //si no hay usuario autenticado lanzo error de autorizacion
     if (!request.user) {
       throw new UnauthorizedException('token invalido')
     }
@@ -140,6 +146,7 @@ export class PublicacionesController {
   @Delete(':id/me-gusta')
   quitarLike(@Param('id') id: string, @Req() req: Request) {
     const request = req as Request & { user?: AuthPayload }
+    //si no hay usuario autenticado lanzo error de autorizacion
     if (!request.user) {
       throw new UnauthorizedException('token invalido')
     }
@@ -148,10 +155,75 @@ export class PublicacionesController {
     return this.publicacionesService.quitarLike(id, request.user.uuid)
   }
 
-  //endpoint temporal para obtener el detalle de una publicacion (proximo sprint)
-  //se implementara en el sprint 3
+  //detalle completo de la publicacion
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
-  obtenerDetalle() {
-    return { mensaje: 'detalle disponible en proximos sprints' }
+  obtenerDetalle(@Param('id') id: string) {
+    //delego en el servicio la busqueda del detalle por id
+    return this.publicacionesService.obtenerDetalle(id)
+  }
+
+  //comentarios paginados ordenados por mas recientes
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/comentarios')
+  listarComentarios(
+    @Param('id') id: string,
+    @Query('skip') skip?: string,
+    @Query('limit') limit?: string,
+  ) {
+    //normalizo el skip recibido para evitar valores invalidos
+    const skipNumero = Number(skip)
+    const skipSeguro =
+      Number.isFinite(skipNumero) && skipNumero >= 0 ? Math.floor(skipNumero) : 0
+
+    //normalizo el limite recibido para definir cuantos comentarios traer
+    const limitNumero = Number(limit)
+    const limiteSeguro =
+      Number.isFinite(limitNumero) && limitNumero > 0 ? Math.floor(limitNumero) : 3
+
+    //pido al servicio los comentarios paginados de la publicacion
+    return this.publicacionesService.listarComentarios(id, skipSeguro, limiteSeguro)
+  }
+
+  //creo un nuevo comentario asociado a una publicacion
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/comentarios')
+  crearComentario(
+    @Param('id') id: string,
+    @Body() body: CreateComentarioDto,
+    @Req() req: Request,
+  ) {
+    const request = req as Request & { user?: AuthPayload }
+    //valido que el usuario este autenticado antes de comentar
+    if (!request.user) {
+      throw new UnauthorizedException('token invalido')
+    }
+
+    //delego en el servicio la creacion del comentario
+    return this.publicacionesService.agregarComentario(id, request.user.uuid, body.contenido)
+  }
+
+  //edito el contenido de un comentario propio
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/comentarios/:comentarioId')
+  editarComentario(
+    @Param('id') id: string,
+    @Param('comentarioId') comentarioId: string,
+    @Body() body: UpdateComentarioDto,
+    @Req() req: Request,
+  ) {
+    const request = req as Request & { user?: AuthPayload }
+    //valido que el usuario este autenticado antes de editar
+    if (!request.user) {
+      throw new UnauthorizedException('token invalido')
+    }
+
+    //llamo al servicio para editar el comentario verificando autoria
+    return this.publicacionesService.editarComentario(
+      id,
+      comentarioId,
+      request.user.uuid,
+      body.contenido,
+    )
   }
 }

@@ -33,6 +33,22 @@ interface PublicacionPlano {
   likesCount?: number;
 }
 
+//estructura plana de un comentario dentro de una publicacion
+interface ComentarioPlano {
+  _id?: Types.ObjectId | string;
+  contenido?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  modificado?: boolean;
+  usuario?:
+    | AutorPlano
+    | Types.ObjectId
+    | string
+    | (AutorPlano & { uuid?: string })
+    | { _id?: Types.ObjectId | string; userName?: string; imagenPerfil?: string; uuid?: string }
+    | null;
+}
+
 @Injectable()
 export class PublicacionesService {
   constructor(
@@ -174,6 +190,185 @@ export class PublicacionesService {
       total,
       hasMore,
     };
+  }
+
+  //obtengo el detalle completo de una publicacion con sus comentarios
+  async obtenerDetalle(publicacionId: string) {
+    const publicacion = await this.publicacionModel
+      .findById(publicacionId)
+      .populate('autor', 'uuid userName imagenPerfil estado')
+      .populate('likes', 'uuid')
+      .populate('comentarios.usuario', 'uuid userName imagenPerfil estado')
+      .exec();
+
+    if (!publicacion || publicacion.estado === false) {
+      throw new NotFoundException('publicacion no encontrada');
+    }
+
+    //mapeo la publicacion incluyendo comentarios
+    return this.mapearPublicacion(publicacion, true);
+  }
+
+  //traigo los comentarios de una publicacion aplicando paginado y orden
+  async listarComentarios(publicacionId: string, skip: number, limit: number) {
+    const skipSeguro = skip >= 0 ? skip : 0;
+    const limiteSeguro = limit > 0 ? limit : 3;
+
+    const publicacion = await this.publicacionModel
+      .findById(publicacionId)
+      .select('comentarios estado')
+      .populate('comentarios.usuario', 'uuid userName imagenPerfil estado')
+      .exec();
+
+    if (!publicacion || publicacion.estado === false) {
+      throw new NotFoundException('publicacion no encontrada');
+    }
+
+    const comentariosBase = Array.isArray(publicacion.comentarios)
+      ? publicacion.comentarios
+      : [];
+
+    //ordeno los comentarios por fecha descendente
+    const comentariosOrdenados = [...comentariosBase].sort((a, b) => {
+      const fechaA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+      const fechaB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+      return fechaB - fechaA;
+    });
+
+    const total = comentariosOrdenados.length;
+    const pagina = comentariosOrdenados.slice(skipSeguro, skipSeguro + limiteSeguro);
+    //mapeo cada comentario al formato esperado por el front
+    const comentarios = pagina.map((comentario) => this.mapearComentario(comentario));
+    const hasMore = skipSeguro + pagina.length < total;
+
+    return {
+      comentarios,
+      total,
+      hasMore,
+    };
+  }
+
+  //agrego un nuevo comentario asociado a la publicacion indicada
+  async agregarComentario(publicacionId: string, usuarioUuid: string, contenido: string) {
+    const usuario = await this.obtenerUsuarioActivo(usuarioUuid);
+    if (!usuario) {
+      throw new ForbiddenException('usuario no autorizado');
+    }
+
+    const comentarioNormalizado = (contenido ?? '').trim();
+    if (comentarioNormalizado === '') {
+      throw new BadRequestException('el comentario no puede estar vacio');
+    }
+
+    const publicacion = await this.publicacionModel.findById(publicacionId);
+    if (!publicacion || publicacion.estado === false) {
+      throw new NotFoundException('publicacion no encontrada');
+    }
+
+    //genero un id propio para el nuevo comentario
+    const comentarioId = new Types.ObjectId();
+    const nuevoComentario = {
+      _id: comentarioId,
+      usuario: usuario._id,
+      contenido: comentarioNormalizado,
+      modificado: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    //inserto el comentario en el arreglo de la publicacion
+    const actualizada = await this.publicacionModel
+      .findByIdAndUpdate(
+        publicacionId,
+        { $push: { comentarios: nuevoComentario } },
+        { new: true },
+      )
+      .populate('comentarios.usuario', 'uuid userName imagenPerfil estado')
+      .exec();
+
+    if (!actualizada) {
+      throw new NotFoundException('publicacion no encontrada');
+    }
+
+    //busco el comentario recien insertado por su id
+    const comentarioCreado = actualizada.comentarios.find((comentario) => {
+      const comentarioIdGuardado = this.obtenerIdComoString(comentario._id);
+      return comentarioIdGuardado !== '' && comentarioIdGuardado === comentarioId.toString();
+    });
+
+    if (!comentarioCreado) {
+      throw new NotFoundException('no se pudo registrar el comentario');
+    }
+
+    //retorno el comentario mapeado para el frontend
+    return this.mapearComentario(comentarioCreado);
+  }
+
+  //edito el contenido de un comentario existente
+  async editarComentario(
+    publicacionId: string,
+    comentarioId: string,
+    usuarioUuid: string,
+    contenido: string,
+  ) {
+    const usuario = await this.obtenerUsuarioActivo(usuarioUuid);
+    if (!usuario) {
+      throw new ForbiddenException('usuario no autorizado');
+    }
+
+    const comentarioNormalizado = (contenido ?? '').trim();
+    if (comentarioNormalizado === '') {
+      throw new BadRequestException('el comentario no puede estar vacio');
+    }
+
+    const publicacion = await this.publicacionModel
+      .findById(publicacionId)
+      .populate('comentarios.usuario', 'uuid userName imagenPerfil estado')
+      .exec();
+
+    if (!publicacion || publicacion.estado === false) {
+      throw new NotFoundException('publicacion no encontrada');
+    }
+
+    if (!Types.ObjectId.isValid(comentarioId)) {
+      throw new NotFoundException('comentario no encontrado');
+    }
+
+    //busco el comentario dentro del arreglo usando su id
+    const comentarioBuscado = publicacion.comentarios.find((comentario) => {
+      const comentarioIdGuardado = this.obtenerIdComoString(comentario._id);
+      return comentarioIdGuardado === comentarioId;
+    });
+
+    if (!comentarioBuscado) {
+      throw new NotFoundException('comentario no encontrado');
+    }
+
+    //verifico que el comentario pertenezca al usuario que edita
+    const esAutorComentario = this.compararIds(comentarioBuscado.usuario, usuario._id);
+    if (!esAutorComentario) {
+      throw new ForbiddenException('solo podes editar tus comentarios');
+    }
+
+    //actualizo contenido y marco el comentario como modificado
+    comentarioBuscado.contenido = comentarioNormalizado;
+    comentarioBuscado.modificado = true;
+    comentarioBuscado.updatedAt = new Date();
+
+    await publicacion.save();
+    await publicacion.populate('comentarios.usuario', 'uuid userName imagenPerfil estado');
+
+    //busco la version final del comentario luego del guardado
+    const comentarioActualizado = publicacion.comentarios.find((comentario) => {
+      const comentarioIdGuardado = this.obtenerIdComoString(comentario._id);
+      return comentarioIdGuardado === comentarioId;
+    });
+
+    if (!comentarioActualizado) {
+      throw new NotFoundException('comentario no encontrado');
+    }
+
+    return this.mapearComentario(comentarioActualizado);
   }
 
   //busco todas las publicaciones activas realizadas por un autor especifico
@@ -340,7 +535,10 @@ export class PublicacionesService {
   }
 
   //normalizo la salida de la publicacion para el frontend
-  private mapearPublicacion(origen: PublicacionDocument | PublicacionPlano) {
+  private mapearPublicacion(
+    origen: PublicacionDocument | PublicacionPlano,
+    incluirComentarios = false,
+  ) {
     //detect
     //determino si el origen es un documento de mongoose o un objeto plano
     const esDocumento =
@@ -411,6 +609,22 @@ export class PublicacionesService {
         }
       : undefined;
 
+    //si me piden incluir comentarios preparo el arreglo base
+    const comentariosBase =
+      incluirComentarios && Array.isArray((base as Record<string, any>).comentarios)
+        ? ((base as Record<string, any>).comentarios as ComentarioPlano[])
+        : [];
+
+    const comentarios = incluirComentarios
+      ? [...comentariosBase]
+          .sort((a, b) => {
+            const fechaA = this.obtenerFechaComentario(a);
+            const fechaB = this.obtenerFechaComentario(b);
+            return fechaB - fechaA;
+          })
+          .map((comentario) => this.mapearComentario(comentario))
+      : [];
+
     //construyo el objeto final que devolvere al frontend
     const respuesta = {
       _id:
@@ -428,8 +642,116 @@ export class PublicacionesService {
       autor,
       //recalculo el contador de likes a partir del array normalizado
       likesCount: likes.length,
+      comentarios,
     };
 
     return respuesta;
+  }
+
+  //transformo un comentario al formato esperado en el frontend
+  private mapearComentario(origen: ComentarioPlano | any) {
+    const esDocumento = typeof origen?.toObject === 'function';
+    const base = esDocumento
+      ? ((origen as { toObject: () => ComentarioPlano }).toObject() as ComentarioPlano)
+      : ((origen ?? {}) as ComentarioPlano);
+
+    const usuario = this.mapearUsuarioComentario(base.usuario);
+
+    return {
+      _id: this.obtenerIdComoString(base._id),
+      contenido: base.contenido ?? '',
+      createdAt: base.createdAt ?? new Date(),
+      updatedAt: base.updatedAt ?? base.createdAt ?? new Date(),
+      modificado: base.modificado === true,
+      usuario,
+    };
+  }
+
+  //normalizo los datos del usuario que escribio el comentario
+  private mapearUsuarioComentario(origen: ComentarioPlano['usuario']) {
+    if (!origen) {
+      return { _id: '', userName: '', imagenPerfil: undefined, uuid: undefined };
+    }
+
+    if (typeof origen === 'string') {
+      return { _id: origen, userName: '', imagenPerfil: undefined, uuid: undefined };
+    }
+
+    if (origen instanceof Types.ObjectId) {
+      return { _id: origen.toString(), userName: '', imagenPerfil: undefined, uuid: undefined };
+    }
+
+    const origenObjeto = origen as Record<string, any>;
+    const id = this.obtenerIdComoString(origenObjeto);
+    const userName =
+      typeof origenObjeto.userName === 'string'
+        ? origenObjeto.userName
+        : typeof origenObjeto.nombre === 'string'
+        ? origenObjeto.nombre
+        : '';
+    const imagenPerfil =
+      typeof origenObjeto.imagenPerfil === 'string'
+        ? origenObjeto.imagenPerfil
+        : typeof origenObjeto.avatar === 'string'
+        ? origenObjeto.avatar
+        : undefined;
+    const uuid = typeof origenObjeto.uuid === 'string' ? origenObjeto.uuid : undefined;
+
+    return { _id: id, userName, imagenPerfil, uuid };
+  }
+
+  //obtengo el identificador en formato string sin importar la forma original
+  private obtenerIdComoString(valor: unknown): string {
+    if (!valor) {
+      return '';
+    }
+
+    if (valor instanceof Types.ObjectId) {
+      return valor.toString();
+    }
+
+    if (typeof valor === 'string') {
+      return valor;
+    }
+
+    if (typeof valor === 'object') {
+      const objeto = valor as Record<string, unknown>;
+      const posibleId = objeto._id;
+
+      if (posibleId instanceof Types.ObjectId) {
+        return posibleId.toString();
+      }
+
+      if (typeof posibleId === 'string') {
+        return posibleId;
+      }
+    }
+
+    return '';
+  }
+
+  //comparo dos identificadores manejando objectid y strings
+  private compararIds(origen: unknown, destino: Types.ObjectId) {
+    const origenId = this.obtenerIdComoString(origen);
+    if (origenId === '') {
+      return false;
+    }
+    return origenId === destino.toString();
+  }
+
+  //obtengo la fecha del comentario como timestamp para ordenar
+  private obtenerFechaComentario(comentario: ComentarioPlano) {
+    if (comentario.createdAt instanceof Date) {
+      return comentario.createdAt.getTime();
+    }
+
+    if (comentario.createdAt) {
+      const fecha = new Date(comentario.createdAt);
+      if (!Number.isNaN(fecha.getTime())) {
+        return fecha.getTime();
+      }
+    }
+
+    return 0;
   }
 }
