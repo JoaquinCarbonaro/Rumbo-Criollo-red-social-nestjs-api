@@ -51,14 +51,20 @@ export class AuthController {
     return this.authService.login(loginAuthDto);
   }
 
-  //funciona por POSTMAN -> proximamente: Integrar la verificacion el frontend para ver si esta la sesion activa (en pagina de carga inicial)
   //verifico el token enviado en el header authorization
-  @Get('autorizar')
+  @Post('autorizar')
   @HttpCode(HttpStatus.OK)
   autorizar(@ReqHeaders('authorization') authorization?: string) {
     //valido el token usando el servicio
     const payload = this.authService.validarToken(authorization);
-    //retorno respuesta con datos del usuario
+    //retorno respuesta con datos del usuario sin informacion de expiracion
     return { autorizado: true, usuario: payload };
+  }
+
+  //renuevo un token valido y extiendo su expiracion quince minutos mas
+  @Post('refrescar')
+  @HttpCode(HttpStatus.OK)
+  refrescar(@ReqHeaders('authorization') authorization?: string) {
+    return this.authService.refrescarToken(authorization);
   }
 }
