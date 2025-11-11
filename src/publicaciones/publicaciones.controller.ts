@@ -55,7 +55,8 @@ export class PublicacionesController {
     )
   }
 
-  //ruta publica para listar publicaciones con filtros y paginacion
+  //ruta protegida para listar publicaciones con filtros y paginacion
+  @UseGuards(JwtAuthGuard)
   @Get()
   listar(
     @Query('offset') offset?: string,
