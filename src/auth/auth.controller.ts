@@ -34,11 +34,6 @@ export class AuthController {
       createUsuarioDto.imagenPerfil = `/images/${imagenPerfil.filename}`;
     }
 
-    //si no se recibe imagen, asigno un placeholder por defecto
-    if (!createUsuarioDto.imagenPerfil) {
-      createUsuarioDto.imagenPerfil = `/images/placeholder.png`;
-    }
-
     //llamo al servicio para registrar el usuario
     return this.authService.registrar(createUsuarioDto);
   }
