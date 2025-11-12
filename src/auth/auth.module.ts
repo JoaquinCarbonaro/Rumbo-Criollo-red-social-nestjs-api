@@ -9,6 +9,7 @@ import { AuthService } from './auth.service'
 import { UsuariosModule } from '../usuarios/usuarios.module'
 import { validarImagenMulter } from '../utils/file-upload'
 import { JwtAuthGuard } from './guards/jwt-auth.guard'
+import { AdminGuard } from './guards/admin.guard'
 
 //defino la ruta donde se guardan las imagenes subidas por los usuarios
 const uploadRoot = join(process.cwd(), 'public', 'images')
@@ -59,10 +60,10 @@ const uploadRoot = join(process.cwd(), 'public', 'images')
   controllers: [AuthController],
 
   //registro los servicios y guards relacionados a autenticacion
-  providers: [AuthService, JwtAuthGuard],
+  providers: [AuthService, JwtAuthGuard, AdminGuard],
 
   //exporto el servicio y el guard para que otros modulos puedan usarlos
-  exports: [AuthService, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard, AdminGuard],
 })
 //defino el modulo de autenticacion que gestiona login, registro y validacion jwt
 export class AuthModule {}
