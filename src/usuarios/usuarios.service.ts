@@ -7,7 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
-import { Model } from 'mongoose';
+import { Model, isValidObjectId } from 'mongoose';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { obtenerFechaNacimientoValidada } from '../utils/date-validators';
 import { Usuario, UsuarioDocument } from './schemas/usuario.schema';
@@ -114,6 +114,13 @@ export class UsuariosService {
   async findByUuid(uuid: string): Promise<UsuarioDocument | null> {
     const usuario = await this.usuarioModel.findOne({ uuid }).exec();
     return usuario;
+  }
+
+  //devuelvo el listado de usuarios segun el filtro de estado
+  async listarUsuarios(incluirInactivos: boolean): Promise<UsuarioDocument[]> {
+    const filtro = incluirInactivos ? {} : { estado: true };
+    const usuarios = await this.usuarioModel.find(filtro).sort({ createdAt: -1 }).exec();
+    return usuarios;
   }
 
   //actualizo el perfil del usuario autenticado
@@ -237,5 +244,33 @@ export class UsuariosService {
     //uso bcrypt para comparar la contraseña plana con el hash
     const coincide = await bcrypt.compare(passwordPlano, passwordHash);
     return coincide;
+  }
+
+  //deshabilito a un usuario cambiando su estado a falso
+  async deshabilitar(id: string): Promise<UsuarioDocument> {
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException('identificador invalido');
+    }
+    const usuario = await this.usuarioModel.findById(id).exec();
+    if (!usuario) {
+      throw new NotFoundException('usuario no encontrado');
+    }
+    usuario.estado = false;
+    const guardado = await usuario.save();
+    return guardado;
+  }
+
+  //reactivo a un usuario poniendo su estado en verdadero
+  async reactivar(id: string): Promise<UsuarioDocument> {
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException('identificador invalido');
+    }
+    const usuario = await this.usuarioModel.findById(id).exec();
+    if (!usuario) {
+      throw new NotFoundException('usuario no encontrado');
+    }
+    usuario.estado = true;
+    const guardado = await usuario.save();
+    return guardado;
   }
 }

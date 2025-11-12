@@ -2,8 +2,12 @@ import {
   Controller,
   Get,
   Put,
+  Post,
+  Delete,
   Req,
   Body,
+  Param,
+  Query,
   UseGuards,
   NotFoundException,
   Inject,
@@ -17,6 +21,8 @@ import { UsuariosService } from './usuarios.service'
 import { PublicacionesService } from '../publicaciones/publicaciones.service'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto'
+import { CreateUsuarioDto } from './dto/create-usuario.dto'
+import { AdminGuard } from '../auth/guards/admin.guard'
 
 //formateo la fecha respetando la zona horaria local y evito el desfase de toisostring
 function formatearFechaLocalPlano(fecha: Date | null | undefined): string | null {
@@ -37,6 +43,56 @@ export class UsuariosController {
     @Inject(forwardRef(() => PublicacionesService))
     private readonly publicacionesService: PublicacionesService
   ) {}
+
+  //permito que un admin liste usuarios
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get()
+  async listarUsuarios(@Query('incluirInactivos') incluirInactivos?: string) {
+    //convierto el querystring a booleano
+    const incluir = incluirInactivos === 'true'
+    //traigo usuarios y los adapto a formato publico
+    const usuarios = await this.usuariosService.listarUsuarios(incluir)
+    return usuarios.map((usuario) => this.usuariosService.toPublic(usuario))
+  }
+
+  //permito que un admin cree un usuario nuevo
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post()
+  @UseInterceptors(FileInterceptor('imagenPerfil'))
+  async crearUsuario(
+    @Body() body: CreateUsuarioDto,
+    @UploadedFile() imagen?: Express.Multer.File
+  ) {
+    //armo el dto incluyendo la ruta publica de la imagen si viene
+    const datos: CreateUsuarioDto & { imagenPerfil?: string } = {
+      ...body,
+      imagenPerfil: imagen ? `/images/${imagen.filename}` : undefined
+    }
+    //creo el usuario y devuelvo sus datos publicos
+    const creado = await this.usuariosService.create(datos)
+    return this.usuariosService.toPublic(creado)
+  }
+
+  //deshabilito usuarios desde el panel admin
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Delete(':id')
+  async deshabilitarUsuario(@Param('id') id: string) {
+    //ejecuto baja logica y confirmo con un mensaje simple
+    await this.usuariosService.deshabilitar(id)
+    return { mensaje: 'usuario deshabilitado' }
+  }
+
+  //reactivo a un usuario previamente deshabilitado
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post(':id/reactivar')
+  async reactivarUsuario(@Param('id') id: string) {
+    //ejecuto alta logica y devuelvo el usuario publico resultante
+    const usuario = await this.usuariosService.reactivar(id)
+    return {
+      mensaje: 'usuario reactivado',
+      usuario: this.usuariosService.toPublic(usuario)
+    }
+  }
 
   //ruta protegida que devuelve el perfil del usuario autenticado junto a sus publicaciones
   @UseGuards(JwtAuthGuard)
