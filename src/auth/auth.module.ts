@@ -47,10 +47,10 @@ const uploadRoot = join(process.cwd(), 'public', 'images')
           //asigno el secreto al token
           secret: secreto,
           //defino el tiempo de expiracion del token a 15 minutos
-          signOptions: { expiresIn: '15m' },
+          //signOptions: { expiresIn: '15m' },
           
           //descomentar para prueba de token rapida
-          //signOptions: { expiresIn: '6m' },
+          signOptions: { expiresIn: '6m' },
         }
       },
     }),
