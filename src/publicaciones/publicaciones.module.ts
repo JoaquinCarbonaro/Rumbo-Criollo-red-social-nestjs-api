@@ -8,6 +8,8 @@ import { AuthModule } from '../auth/auth.module'
 import { validarImagenMulter } from '../utils/file-upload'
 import { PublicacionesController } from './publicaciones.controller'
 import { PublicacionesService } from './publicaciones.service'
+import { EstadisticasController } from './estadisticas.controller'
+import { EstadisticasService } from './estadisticas.service'
 import { Publicacion, PublicacionSchema } from './schemas/publicacion.schema'
 
 //defino la ruta donde se guardan las imagenes de las publicaciones
@@ -45,10 +47,10 @@ const uploadRoot = join(process.cwd(), 'public', 'images')
   ],
 
   //registro el controlador que maneja las rutas http del modulo publicaciones
-  controllers: [PublicacionesController],
+  controllers: [PublicacionesController, EstadisticasController],
 
-  //registro el servicio con la logica principal del modulo publicaciones
-  providers: [PublicacionesService],
+  //registro los servicios con la logica principal del modulo publicaciones
+  providers: [PublicacionesService, EstadisticasService],
 
   //exporto el servicio para que otros modulos puedan usarlo
   exports: [PublicacionesService],
