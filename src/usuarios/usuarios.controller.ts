@@ -122,7 +122,8 @@ export class UsuariosController {
       //formateo la fecha en formato yyyy-mm-dd sin desfase horario
       fechaNacimiento: formatearFechaLocalPlano(usuario.fechaNacimiento),
       descripcion: usuario.descripcion,
-      imagenPerfil: usuario.imagenPerfil ?? null
+      imagenPerfil: usuario.imagenPerfil ?? null,
+      perfil: usuario.perfil,
     }
 
     //busco todas las publicaciones creadas por este usuario
@@ -175,7 +176,8 @@ export class UsuariosController {
       email: usuarioActualizado.email,
       fechaNacimiento: formatearFechaLocalPlano(usuarioActualizado.fechaNacimiento),
       descripcion: usuarioActualizado.descripcion,
-      imagenPerfil: usuarioActualizado.imagenPerfil ?? null
+      imagenPerfil: usuarioActualizado.imagenPerfil ?? null,
+      perfil: usuarioActualizado.perfil,
     }
 
     //devuelvo solo el usuario para que el front actualice el estado del perfil
