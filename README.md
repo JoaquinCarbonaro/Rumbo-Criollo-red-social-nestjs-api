@@ -1,86 +1,185 @@
-# TP #2 — Red Social (Backend / Server) — Programación IV
+# Rumbo Criollo — Red Social Backend API
 
-Backend (API REST) de una aplicación tipo **“Red Social”** desarrollada como Trabajo Práctico de **Programación IV**.  
-El objetivo del servidor es proveer autenticación segura con **JWT**, persistencia en **MongoDB** y endpoints para manejar **usuarios**, **publicaciones**, **comentarios**, **likes** y **estadísticas** para el dashboard de administrador.
+Backend/API REST de una aplicación web tipo **red social** desarrollada con **NestJS, TypeScript y MongoDB**.
 
-> Este repositorio contiene únicamente el **backend (NestJS)**.  
-> El **frontend (Angular)** se encuentra en:  
-> https://github.com/JoaquinCarbonaro/Joaquin-Carbonaro-TP2-PROG4-2025-C2-CLIENT.git
+Este proyecto fue realizado como **Trabajo Práctico N.º 2 de la materia Programación IV**. El objetivo del servidor es proveer autenticación segura con JWT, persistencia en MongoDB y endpoints para usuarios, publicaciones, comentarios, likes y estadísticas del dashboard administrador.
 
-## 🚀 Demo (Deploy)
-- Render (API): https://joaquin-carbonaro-tp2-prog4-2025-c2.onrender.com
-- Vercel (Frontend): https://joaquin-carbonaro-tp-2-prog-4-2025.vercel.app/
+Este repositorio contiene únicamente el **backend/API** de la aplicación.
 
-> Nota: la API está en Render (free tier). La primera request puede tardar por “cold start”.
+Frontend:
+
+https://github.com/JoaquinCarbonaro/Rumbo-Criollo-red-social-angular-frontend
 
 ---
 
-## ✨ Funcionalidades principales (API)
+## 🚀 Demo
 
-### 🔐 Autenticación y seguridad (JWT + roles)
-- Registro e inicio de sesión.
-- Emisión de **JWT** con vencimiento (**15 minutos**).
-- Endpoints para:
-  - **autorizar** token (validación de sesión)
-  - **refrescar** token (renovación sin volver a loguearse)
-- Rutas protegidas con guards:
-  - acceso para usuario logueado
-  - acceso exclusivo **admin** (según rol)
+La API fue desplegada originalmente en Render y el frontend en Vercel, pero actualmente la demo puede no estar completamente funcional porque requiere servicios activos de backend y base de datos.
 
-### 👤 Usuarios (administración)
+Repositorio backend/API:
+
+https://github.com/JoaquinCarbonaro/Rumbo-Criollo-red-social-nestjs-api
+
+Repositorio frontend:
+
+https://github.com/JoaquinCarbonaro/Rumbo-Criollo-red-social-angular-frontend
+
+---
+
+## ✨ Funcionalidades principales
+
+### 🔐 Autenticación y seguridad
+
+- Registro de usuarios.
+- Inicio de sesión.
+- Hash de contraseñas con bcrypt.
+- Emisión de JWT.
+- Validación de sesión.
+- Renovación de token.
+- Rutas protegidas mediante guards.
+- Control de acceso por roles.
+- Acceso diferenciado para usuarios y administradores.
+
+---
+
+## 👤 Usuarios
+
 - Listado de usuarios.
-- Alta de usuario (incluye rol usuario/admin).
-- **Baja lógica / habilitar–deshabilitar** usuarios (sin borrar físicamente de la BD).
+- Alta de usuarios.
+- Alta de administradores.
+- Gestión de roles.
+- Habilitación y deshabilitación de usuarios.
+- Baja lógica sin eliminación física de la base de datos.
 
-### 📝 Publicaciones
-- Crear publicación (incluye imagen opcional).
-- Listar publicaciones (feed) con filtros/ordenamiento y paginación según la implementación.
-- **Likes**: dar / quitar like y persistir la interacción.
-- Eliminación (propias y/o por admin) con enfoque de baja lógica.
+---
 
-### 💬 Comentarios
-- Listar comentarios por publicación.
-- Crear comentario.
-- Editar comentario propio, marcando que fue modificado.
-- Paginación (ej. “cargar más”).
+## 📝 Publicaciones
 
-### 📊 Estadísticas (para dashboard admin)
-- Endpoints que devuelven métricas para alimentar gráficos del dashboard (consumidos por el frontend con ECharts).
+- Creación de publicaciones.
+- Publicaciones con texto e imagen opcional.
+- Listado de publicaciones para feed.
+- Filtros y ordenamiento según implementación.
+- Paginación según implementación.
+- Likes.
+- Eliminación de publicaciones propias.
+- Eliminación de publicaciones por administrador.
+- Baja lógica de publicaciones.
+
+---
+
+## 💬 Comentarios
+
+- Listado de comentarios por publicación.
+- Creación de comentarios.
+- Edición de comentarios propios.
+- Marcado de comentarios modificados.
+- Paginación para cargar más comentarios.
+
+---
+
+## 📊 Estadísticas
+
+Endpoints orientados a alimentar el dashboard administrador del frontend.
+
+Incluye métricas relacionadas con:
+
+- Usuarios.
+- Publicaciones.
+- Comentarios.
+- Likes.
+- Actividad general de la red social.
+
+---
+
+## 🖼️ Manejo de imágenes
+
+- Subida de imágenes mediante Multer.
+- Imágenes asociadas a publicaciones o perfiles según el flujo implementado.
+- Integración con los endpoints correspondientes.
 
 ---
 
 ## 🧰 Tecnologías usadas
-- NestJS + TypeScript
-- MongoDB + Mongoose
-- JWT (`@nestjs/jwt`)
-- bcrypt (hash de contraseñas)
-- DTOs y validaciones (`class-validator` / `class-transformer`)
-- Multer (subida de imágenes)
+
+- NestJS
+- TypeScript
+- MongoDB
+- Mongoose
+- JWT
+- bcrypt
+- DTOs
+- class-validator
+- class-transformer
+- Multer
+- API REST
+- Git
+- GitHub
 
 ---
 
-## 🗃️ Persistencia (modelo de datos)
+## 🗃️ Persistencia de datos
+
 El servidor guarda información en MongoDB para:
-- usuarios (perfil, rol, estado habilitado/deshabilitado)
-- publicaciones (contenido, autor, likes, estado/baja lógica)
-- comentarios (autor, publicación, `modificado`)
-- métricas/estadísticas (según endpoints del dashboard)
+
+- Usuarios.
+- Roles.
+- Estado de usuario habilitado/deshabilitado.
+- Publicaciones.
+- Likes.
+- Comentarios.
+- Estado de edición de comentarios.
+- Métricas y estadísticas para dashboard.
 
 ---
 
-## ✅ Contexto del TP
-El trabajo se organizó por sprints e incluye: autenticación con expiración/renovación, control de acceso por roles, ABM lógico, endpoints para publicaciones/comentarios/likes, manejo de imágenes y estadísticas para administrador, respetando buenas prácticas y códigos HTTP adecuados.
+## 🔗 Integración con frontend
+
+Este backend es consumido por un frontend desarrollado con **Angular y TypeScript**.
+
+El frontend se encuentra en:
+
+https://github.com/JoaquinCarbonaro/Rumbo-Criollo-red-social-angular-frontend
+
+---
+
+## ✅ Contexto académico
+
+Este proyecto fue desarrollado como parte de **Programación IV**.
+
+El trabajo se organizó por etapas e incluye:
+
+- Autenticación con JWT.
+- Expiración y renovación de sesión.
+- Control de acceso por roles.
+- Endpoints para usuarios.
+- Endpoints para publicaciones.
+- Endpoints para comentarios.
+- Manejo de likes.
+- Manejo de imágenes.
+- Estadísticas para administrador.
+- Buenas prácticas de API REST.
 
 ---
 
 ## 💡 Lo que demuestra este proyecto
-- **Backend API REST completo** con NestJS (módulos, servicios, controllers, DTOs).
-- **Seguridad**: JWT, guards, roles, y manejo de expiración/refresh.
-- **Persistencia y modelado** en MongoDB (colecciones separadas por dominio).
-- **Manejo de archivos** (imágenes) integrado al flujo de publicaciones/perfil.
-- **Soporte para analítica**: endpoints pensados para un dashboard con métricas.
+
+- Desarrollo backend con NestJS y TypeScript.
+- Construcción de una API REST completa.
+- Autenticación segura con JWT.
+- Hash de contraseñas con bcrypt.
+- Uso de guards y control de roles.
+- Persistencia y modelado con MongoDB y Mongoose.
+- Validación de datos con DTOs.
+- Manejo de archivos con Multer.
+- Organización por módulos, controladores y servicios.
+- Integración con frontend Angular.
+- Soporte para dashboard con estadísticas.
 
 ---
 
 ## 👤 Autor
-Joaquín Carbonaro
+
+**Joaquín Carbonaro**
+
+GitHub: https://github.com/JoaquinCarbonaro  
+LinkedIn: https://www.linkedin.com/in/joaquin-carbonaro
