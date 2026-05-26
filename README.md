@@ -14,7 +14,15 @@ https://github.com/JoaquinCarbonaro/Rumbo-Criollo-red-social-angular-frontend
 
 ## 🚀 Demo
 
-La API fue desplegada originalmente en Render y el frontend en Vercel, pero actualmente la demo puede no estar completamente funcional porque requiere servicios activos de backend y base de datos.
+El frontend de la aplicación se encuentra desplegado en Vercel y puede visualizarse desde el siguiente enlace:
+
+https://joaquin-carbonaro-tp-2-prog-4-2025.vercel.app
+
+La API fue desplegada originalmente en Render:
+
+https://joaquin-carbonaro-tp2-prog4-2025-c2.onrender.com
+
+> Nota: algunas funcionalidades pueden no estar disponibles actualmente porque dependen de la API, la base de datos o servicios externos utilizados para el trabajo práctico. De todas formas, el deploy del frontend permite visualizar la interfaz general de la aplicación y el proyecto demuestra integración entre frontend, backend y base de datos.
 
 Repositorio backend/API:
 
