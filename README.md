@@ -150,6 +150,38 @@ https://github.com/JoaquinCarbonaro/Rumbo-Criollo-red-social-angular-frontend
 
 ---
 
+## ▶️ Cómo ejecutar el proyecto
+
+1. Clonar el repositorio:
+
+```bash
+git clone https://github.com/JoaquinCarbonaro/Rumbo-Criollo-red-social-nestjs-api.git
+```
+
+2. Ingresar al proyecto:
+
+```bash
+cd Rumbo-Criollo-red-social-nestjs-api
+```
+
+3. Instalar dependencias:
+
+```bash
+npm install
+```
+
+4. Configurar las variables de entorno necesarias para la conexión con MongoDB y JWT.
+
+5. Ejecutar el servidor en modo desarrollo:
+
+```bash
+npm run start:dev
+```
+
+6. Consumir la API desde el frontend o desde una herramienta como Postman.
+
+---
+
 ## ✅ Contexto académico
 
 Este proyecto fue desarrollado como parte de **Programación IV**.
@@ -171,6 +203,8 @@ El trabajo se organizó por etapas e incluye:
 
 ## 💡 Lo que demuestra este proyecto
 
+Este proyecto demuestra conocimientos en:
+
 - Desarrollo backend con NestJS y TypeScript.
 - Construcción de una API REST completa.
 - Autenticación segura con JWT.
@@ -191,3 +225,9 @@ El trabajo se organizó por etapas e incluye:
 
 GitHub: https://github.com/JoaquinCarbonaro  
 LinkedIn: https://www.linkedin.com/in/joaquin-carbonaro
+
+---
+
+## 🧾 Uso
+
+Este proyecto se comparte con fines educativos y de portfolio. Puede utilizarse como referencia para proyectos académicos relacionados con NestJS, TypeScript, MongoDB, API REST, autenticación JWT, roles, guards, DTOs, validaciones, manejo de imágenes y desarrollo backend.
